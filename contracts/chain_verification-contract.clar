@@ -45,3 +45,104 @@
     created-at: uint
   }
 )
+
+;; Entity authentication mapping
+(define-map entity-principals
+  { principal: principal }
+  { entity-id: uint }
+)
+
+;; Products being tracked
+(define-map products
+  { product-id: uint }
+  {
+    name: (string-utf8 100),
+    description: (string-utf8 500),
+    current-state: uint,
+    current-custodian: uint,  ;; entity-id of current custodian
+    origin-entity-id: uint,
+    origin-certification-id: uint,
+    origin-timestamp: uint,
+    final-destination-entity-id: (optional uint),
+    final-delivery-timestamp: (optional uint),
+    is-verified: bool,
+    sustainability-score: uint,   ;; 0-100 calculated from all checkpoints
+    product-uri: (string-utf8 256),  ;; Link to off-chain data
+    created-at: uint
+  }
+)
+
+;; Certification types (Organic, Fair Trade, etc.)
+(define-map certification-types
+  { cert-type-id: uint }
+  { cert-type-name: (string-utf8 100) }
+)
+
+;; Certificates issued to entities or products
+(define-map certificates
+  { certificate-id: uint }
+  {
+    cert-type-id: uint,
+    issuer-entity-id: uint,
+    recipient-entity-id: (optional uint),
+    product-id: (optional uint),
+    valid-from: uint,
+    valid-until: uint,
+    verification-uri: (string-utf8 256),
+    is-active: bool,
+    created-at: uint
+  }
+)
+
+;; Custody Transfer History
+(define-map custody-transfers
+  { product-id: uint, transfer-index: uint }
+  {
+    from-entity-id: uint,
+    to-entity-id: uint,
+    transfer-timestamp: uint,
+    notes: (string-utf8 500),
+    verification-signature: (buff 65)
+  }
+)
+
+;; Quality Assurance Checkpoints
+(define-map checkpoints
+  { checkpoint-id: uint }
+  {
+    product-id: uint,
+    inspector-entity-id: uint,
+    checkpoint-type: (string-utf8 50),
+    timestamp: uint,
+    location: (string-utf8 100),
+    quality-score: uint,       ;; 0-100 score
+    sustainability-score: uint, ;; 0-100 score
+    ethical-score: uint,       ;; 0-100 score
+    notes: (string-utf8 500),
+    evidence-uri: (string-utf8 256),
+    verification-signature: (buff 65)
+  }
+)
+
+;; Product checkpoint index mapping
+(define-map product-checkpoints
+  { product-id: uint, index: uint }
+  { checkpoint-id: uint }
+)
+
+;; Product certificate index mapping
+(define-map product-certificates
+  { product-id: uint, index: uint }
+  { certificate-id: uint }
+)
+
+;; Consumer verification lookup
+(define-map consumer-verifications
+  { product-id: uint, verifier: principal }
+  {
+    timestamp: uint,
+    verification-method: (string-utf8 50),
+    rating: (optional uint),
+    feedback: (optional (string-utf8 500))
+  }
+)
