@@ -267,3 +267,104 @@
     
     ;; Check if principal is already registered
     (asserts! (is-none (map-get? entity-principals { principal: entity-principal })) (err ERR-ALREADY-EXISTS))
+ ;; Register entity
+    (map-set entities
+      { entity-id: entity-id }
+      {
+        name: name,
+        entity-type: entity-type,
+        location: location,
+        contact-info: contact-info,
+        verification-status: false,
+        sustainability-score: u0,
+        created-at: block-height
+      }
+    )
+    
+    ;; Associate principal with entity
+    (map-set entity-principals
+      { principal: entity-principal }
+      { entity-id: entity-id }
+    )
+    
+    ;; Increment entity ID
+    (var-set next-entity-id (+ entity-id u1))
+    
+    (ok entity-id)
+  )
+)
+
+(define-public (verify-entity (entity-id uint))
+  (let
+    (
+      (entity (unwrap! (get-entity-details entity-id) (err ERR-ENTITY-NOT-FOUND)))
+    )
+    
+    ;; Only contract owner or certification authority can verify entities
+    (asserts! 
+      (or 
+        (is-eq tx-sender (var-get contract-owner))
+        (match (get-entity-id-by-principal tx-sender)
+          cert-entity-id 
+          (match (get-entity-details cert-entity-id)
+            cert-entity (is-eq (get entity-type cert-entity) u5) ;; Is certification authority
+            false
+          )
+          false
+        )
+      )
+      (err ERR-NOT-AUTHORIZED)
+    )
+    
+    ;; Update verification status
+    (map-set entities
+      { entity-id: entity-id }
+      (merge entity { verification-status: true })
+    )
+    
+    (ok true)
+  )
+)
+
+;; Product registration and certification
+(define-public (register-product
+  (name (string-utf8 100))
+  (description (string-utf8 500))
+  (product-uri (string-utf8 256))
+)
+  (let
+    (
+      (product-id (var-get next-product-id))
+      (entity-id (unwrap! (get-entity-id-by-principal tx-sender) (err ERR-ENTITY-NOT-FOUND)))
+      (entity (unwrap! (get-entity-details entity-id) (err ERR-ENTITY-NOT-FOUND)))
+    )
+    
+    ;; Check if entity is verified
+    (asserts! (get verification-status entity) (err ERR-NOT-AUTHORIZED))
+    
+    ;; Register product at origin (no certification yet)
+    (map-set products
+      { product-id: product-id }
+      {
+        name: name,
+        description: description,
+        current-state: u1, ;; Origin Certified state
+        current-custodian: entity-id,
+        origin-entity-id: entity-id,
+        origin-certification-id: u0, ;; No certification yet
+        origin-timestamp: block-height,
+        final-destination-entity-id: none,
+        final-delivery-timestamp: none,
+        is-verified: false,
+        sustainability-score: u0,
+        product-uri: product-uri,
+        created-at: block-height
+      }
+    )
+    
+    ;; Increment product ID
+    (var-set next-product-id (+ product-id u1))
+    
+    (ok product-id)
+  )
+)
