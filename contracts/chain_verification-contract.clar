@@ -146,3 +146,124 @@
     feedback: (optional (string-utf8 500))
   }
 )
+
+;; Initialize contract with basic entity types, product states, and certification types
+(begin
+  ;; Entity Types
+  (map-set entity-types { type-id: u1 } { type-name: "Producer" })
+  (map-set entity-types { type-id: u2 } { type-name: "Manufacturer" })
+  (map-set entity-types { type-id: u3 } { type-name: "Distributor" })
+  (map-set entity-types { type-id: u4 } { type-name: "Retailer" })
+  (map-set entity-types { type-id: u5 } { type-name: "Certification Authority" })
+  
+  ;; Product States
+  (map-set product-states { state-id: u1 } { state-name: "Origin Certified" })
+  (map-set product-states { state-id: u2 } { state-name: "In Production" })
+  (map-set product-states { state-id: u3 } { state-name: "Quality Control" })
+  (map-set product-states { state-id: u4 } { state-name: "In Transit" })
+  (map-set product-states { state-id: u5 } { state-name: "At Distributor" })
+  (map-set product-states { state-id: u6 } { state-name: "At Retailer" })
+  (map-set product-states { state-id: u7 } { state-name: "Sold" })
+  
+  ;; Certification Types
+  (map-set certification-types { cert-type-id: u1 } { cert-type-name: "Organic" })
+  (map-set certification-types { cert-type-id: u2 } { cert-type-name: "Fair Trade" })
+  (map-set certification-types { cert-type-id: u3 } { cert-type-name: "Sustainably Sourced" })
+  (map-set certification-types { cert-type-id: u4 } { cert-type-name: "Non-GMO" })
+  (map-set certification-types { cert-type-id: u5 } { cert-type-name: "Carbon Neutral" })
+)
+
+;; Helper function to check if caller is authorized as an entity
+(define-read-only (is-entity-principal (entity-id uint))
+  (match (map-get? entity-principals { principal: tx-sender })
+    entity-info (is-eq (get entity-id entity-info) entity-id)
+    false
+  )
+)
+
+;; Helper function to get entity ID from principal
+(define-read-only (get-entity-id-by-principal (entity-principal principal))
+  (match (map-get? entity-principals { principal: entity-principal })
+    entity-info (ok (get entity-id entity-info))
+    (err ERR-ENTITY-NOT-FOUND)
+  )
+)
+
+;; Read-only functions
+(define-read-only (get-product-details (product-id uint))
+  (map-get? products { product-id: product-id })
+)
+
+(define-read-only (get-entity-details (entity-id uint))
+  (map-get? entities { entity-id: entity-id })
+)
+
+(define-read-only (get-certificate-details (certificate-id uint))
+  (map-get? certificates { certificate-id: certificate-id })
+)
+
+(define-read-only (get-checkpoint-details (checkpoint-id uint))
+  (map-get? checkpoints { checkpoint-id: checkpoint-id })
+)
+
+(define-read-only (get-product-certification-status (product-id uint))
+  (match (map-get? products { product-id: product-id })
+    product (ok {
+      is-verified: (get is-verified product),
+      origin-certification: (get-certificate-details (get origin-certification-id product)),
+      sustainability-score: (get sustainability-score product)
+    })
+    (err ERR-PRODUCT-NOT-FOUND)
+  )
+)
+
+(define-read-only (get-product-journey (product-id uint))
+  ;; In a real implementation, would return a comprehensive journey history
+  ;; including all checkpoints and custody transfers
+  (match (map-get? products { product-id: product-id })
+    product (ok {
+      product-id: product-id,
+      current-state: (get current-state product),
+      current-custodian: (get current-custodian product)
+    })
+    (err ERR-PRODUCT-NOT-FOUND)
+  )
+)
+
+;; Public functions for contract administration
+(define-public (register-entity 
+  (name (string-utf8 100))
+  (entity-type uint)
+  (location (string-utf8 100))
+  (contact-info (string-utf8 100))
+  (entity-principal principal)
+)
+  (let
+    (
+      (entity-id (var-get next-entity-id))
+    )
+    
+    ;; Only contract owner or already registered entity of certification type can register new entities
+    (asserts! 
+      (or 
+        (is-eq tx-sender (var-get contract-owner))
+        (and 
+          (is-some (map-get? entity-principals { principal: tx-sender }))
+          (is-eq 
+            (get entity-type 
+              (unwrap! 
+                (get-entity-details 
+                  (unwrap! (get-entity-id-by-principal tx-sender) (err ERR-ENTITY-NOT-FOUND))
+                )
+                (err ERR-ENTITY-NOT-FOUND)
+              )
+            )
+            u5 ;; Certification Authority type
+          )
+        )
+      )
+      (err ERR-NOT-AUTHORIZED)
+    )
+    
+    ;; Check if principal is already registered
+    (asserts! (is-none (map-get? entity-principals { principal: entity-principal })) (err ERR-ALREADY-EXISTS))
