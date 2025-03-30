@@ -541,3 +541,115 @@
       ) 
       (err ERR-NOT-AUTHORIZED)
     )
+     ;; Validate scores (0-100)
+    (asserts! (and (<= quality-score u100) (<= sustainability-score u100) (<= ethical-score u100)) (err ERR-INVALID-RATING))
+    
+    ;; Record checkpoint
+    (map-set checkpoints
+      { checkpoint-id: checkpoint-id }
+      {
+        product-id: product-id,
+        inspector-entity-id: entity-id,
+        checkpoint-type: checkpoint-type,
+        timestamp: block-height,
+        location: location,
+        quality-score: quality-score,
+        sustainability-score: sustainability-score,
+        ethical-score: ethical-score,
+        notes: notes,
+        evidence-uri: evidence-uri,
+        verification-signature: verification-signature
+      }
+    )
+    
+    ;; Record checkpoint in product's checkpoint index
+    (map-set product-checkpoints
+      { product-id: product-id, index: checkpoint-index }
+      { checkpoint-id: checkpoint-id }
+    )
+    
+    ;; Update product state if this is a quality control checkpoint
+    (when (is-eq checkpoint-type "Quality Control")
+      (map-set products
+        { product-id: product-id }
+        (merge product { 
+          current-state: u3, ;; Quality Control state
+          sustainability-score: sustainability-score ;; Update with latest score
+        })
+      )
+    )
+    
+    ;; Increment checkpoint ID
+    (var-set next-checkpoint-id (+ checkpoint-id u1))
+    
+    (ok checkpoint-id)
+  )
+)
+
+(define-public (mark-product-sold
+  (product-id uint)
+)
+  (let
+    (
+      (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+      (entity-id (unwrap! (get-entity-id-by-principal tx-sender) (err ERR-ENTITY-NOT-FOUND)))
+    )
+    
+    ;; Check if caller is current custodian
+    (asserts! (is-eq entity-id (get current-custodian product)) (err ERR-NOT-CURRENT-CUSTODIAN))
+    
+    ;; Check if current custodian is a retailer
+    (match (get-entity-details entity-id)
+      entity (asserts! (is-eq (get entity-type entity) u4) (err ERR-INVALID-STATE-TRANSITION))
+      (err ERR-ENTITY-NOT-FOUND)
+    )
+    
+    ;; Update product state to sold
+    (map-set products
+      { product-id: product-id }
+      (merge product { 
+        current-state: u7, ;; Sold state
+        final-destination-entity-id: (some entity-id),
+        final-delivery-timestamp: (some block-height)
+      })
+    )
+    
+    (ok true)
+  )
+)
+
+;; Consumer verification
+(define-public (verify-product-as-consumer
+  (product-id uint)
+  (verification-method (string-utf8 50))
+  (rating (optional uint))
+  (feedback (optional (string-utf8 500)))
+)
+  (let
+    (
+      (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+    )
+    
+    ;; Check if product exists and is verified
+    (asserts! (get is-verified product) (err ERR-INVALID-CERTIFICATION))
+    
+    ;; Validate rating if provided (1-5 scale)
+    (match rating
+      rating-value (asserts! (and (>= rating-value u1) (<= rating-value u5)) (err ERR-INVALID-RATING))
+      true
+    )
+    
+    ;; Record consumer verification
+    (map-set consumer-verifications
+      { product-id: product-id, verifier: tx-sender }
+      {
+        timestamp: block-height,
+        verification-method: verification-method,
+        rating: rating,
+        feedback: feedback
+      }
+    )
+    
+    (ok true)
+  )
+)
