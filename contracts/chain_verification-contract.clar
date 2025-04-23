@@ -653,3 +653,18 @@
     (ok true)
   )
 )
+(define-public (revoke-certificate (certificate-id uint))
+  (let (
+    (certificate (unwrap! (get-certificate-details certificate-id) (err ERR-CERTIFICATE-NOT-FOUND)))
+    (caller-id (unwrap! (get-entity-id-by-principal tx-sender) (err ERR-ENTITY-NOT-FOUND)))
+  )
+    (asserts! (is-eq (get issuer-entity-id certificate) caller-id) (err ERR-NOT-AUTHORIZED))
+    
+    ;; Mark as inactive
+    (map-set certificates
+      { certificate-id: certificate-id }
+      (merge certificate { is-active: false })
+    )
+    (ok true)
+  )
+)
