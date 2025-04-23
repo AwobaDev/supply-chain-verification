@@ -668,3 +668,50 @@
     (ok true)
   )
 )
+(define-public (get-entity-type (entity-id uint))
+  (let (
+    (entity (unwrap! (get-entity-details entity-id) (err ERR-ENTITY-NOT-FOUND)))
+  )
+    (ok (get entity-type entity))
+  )
+)
+(define-public (get-product-sustainability-score (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the sustainability score
+    (ok (get sustainability-score product))
+  )
+)
+(define-public (get-product-quality-score (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the quality score
+    (ok (get quality-score product))
+  )
+)
+(define-public (get-product-ethical-score (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the ethical score
+    (ok (get ethical-score product))
+  )
+)
+(define-public (get-product-emission-grams (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the emissions produced at this stage
+    (ok (get emission-grams product))
+  )
+)
+(define-public (get-emission-grams (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the emissions produced at this stage
+    (ok (get emission-grams product))
+  )
+)
