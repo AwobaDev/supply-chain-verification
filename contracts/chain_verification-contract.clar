@@ -715,3 +715,20 @@
     (ok (get emission-grams product))
   )
 )
+(define-read-only (get-sustainability-summary (product-id uint))
+  (let (
+    (total-checkpoints u0)
+    (quality-sum u0)
+    (sustainability-sum u0)
+    (ethical-sum u0)
+  )
+    ;; Fold through checkpoints (placeholder loop)
+    ;; You'd replace this with real iteration using known indexes or counter tracking
+    ;; or Clarinet test-side aggregation
+    (ok {
+      average-quality: (/ quality-sum total-checkpoints),
+      average-sustainability: (/ sustainability-sum total-checkpoints),
+      average-ethical: (/ ethical-sum total-checkpoints)
+    })
+  )
+)
