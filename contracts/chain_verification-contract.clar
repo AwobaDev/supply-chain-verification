@@ -653,3 +653,82 @@
     (ok true)
   )
 )
+(define-public (revoke-certificate (certificate-id uint))
+  (let (
+    (certificate (unwrap! (get-certificate-details certificate-id) (err ERR-CERTIFICATE-NOT-FOUND)))
+    (caller-id (unwrap! (get-entity-id-by-principal tx-sender) (err ERR-ENTITY-NOT-FOUND)))
+  )
+    (asserts! (is-eq (get issuer-entity-id certificate) caller-id) (err ERR-NOT-AUTHORIZED))
+    
+    ;; Mark as inactive
+    (map-set certificates
+      { certificate-id: certificate-id }
+      (merge certificate { is-active: false })
+    )
+    (ok true)
+  )
+)
+(define-public (get-entity-type (entity-id uint))
+  (let (
+    (entity (unwrap! (get-entity-details entity-id) (err ERR-ENTITY-NOT-FOUND)))
+  )
+    (ok (get entity-type entity))
+  )
+)
+(define-public (get-product-sustainability-score (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the sustainability score
+    (ok (get sustainability-score product))
+  )
+)
+(define-public (get-product-quality-score (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the quality score
+    (ok (get quality-score product))
+  )
+)
+(define-public (get-product-ethical-score (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the ethical score
+    (ok (get ethical-score product))
+  )
+)
+(define-public (get-product-emission-grams (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the emissions produced at this stage
+    (ok (get emission-grams product))
+  )
+)
+(define-public (get-emission-grams (product-id uint))
+  (let (
+    (product (unwrap! (get-product-details product-id) (err ERR-PRODUCT-NOT-FOUND)))
+  )
+    ;; Return the emissions produced at this stage
+    (ok (get emission-grams product))
+  )
+)
+(define-read-only (get-sustainability-summary (product-id uint))
+  (let (
+    (total-checkpoints u0)
+    (quality-sum u0)
+    (sustainability-sum u0)
+    (ethical-sum u0)
+  )
+    ;; Fold through checkpoints (placeholder loop)
+    ;; You'd replace this with real iteration using known indexes or counter tracking
+    ;; or Clarinet test-side aggregation
+    (ok {
+      average-quality: (/ quality-sum total-checkpoints),
+      average-sustainability: (/ sustainability-sum total-checkpoints),
+      average-ethical: (/ ethical-sum total-checkpoints)
+    })
+  )
+)
